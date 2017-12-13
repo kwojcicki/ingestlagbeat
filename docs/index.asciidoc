@@ -1,5 +1,0 @@
-= Ldapbeat Docs
-
-Welcome to the Ldapbeat documentation.
-
-

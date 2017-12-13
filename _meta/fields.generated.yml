@@ -1,9 +1,0 @@
-- key: ldapbeat
-  title: ldapbeat
-  description:
-  fields:
-    - name: counter
-      type: long
-      required: true
-      description: >
-        PLEASE UPDATE DOCUMENTATION
