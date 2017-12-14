@@ -16,7 +16,7 @@ import (
 // Ldapbeat - struct for beater
 type Ldapbeat struct {
 	done   chan struct{}
-	config config.Config
+	config config.LdapBeatConfig
 	client beat.Client
 }
 
@@ -48,22 +48,25 @@ func (bt *Ldapbeat) query() {
 		logp.Warn("Couldn't bind to the ldap server: %s", err)
 		return
 	}
-	searchRequest := ldap.NewSearchRequest(
-		"dc=example,dc=com",
-		ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false,
-		"(&(objectClass=*)(objectClass=groupOfUniqueNames))",
-		[]string{"dn", "cn", "objectClass"},
-		nil,
-	)
-	sr, err := conn.Search(searchRequest)
-	if err != nil {
-		logp.Warn("Couldn't query ldap server: %s", err)
-		return
-	}
 
-	logp.Info("%s", sr)
-	for _, result := range sr.Entries {
-		logp.Info("%s", result)
+	for _, query := range bt.config.Queries {
+		searchRequest := ldap.NewSearchRequest(
+			query.BaseDN,
+			query.Scope, query.DeRefAliases, query.Sizelimit, query.Timelimit, query.Typesonly,
+			query.Query,
+			query.Attributes,
+			nil,
+		)
+		sr, err := conn.Search(searchRequest)
+		if err != nil {
+			logp.Warn("Couldn't query ldap server: %s", err)
+			return
+		}
+
+		logp.Info("%s", sr)
+		for _, result := range sr.Entries {
+			logp.Info("%s", result)
+		}
 	}
 }
 
