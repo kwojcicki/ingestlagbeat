@@ -5,6 +5,10 @@
 ldapbeat:
   # Defines how often an event is sent to the output
   period: 1s
+  server: "ldap.forumsys.com"
+  port: 389
+  username: "cn=read-only-admin,dc=example,dc=com"
+  password: "password"
   queries:
   - filter: "(&(objectClass=*)(objectClass=groupOfUniqueNames))"
     basedn: "dc=example,dc=com"

@@ -33,4 +33,9 @@ func Test_ReadConfig(t *testing.T) {
 	assert.Equal(t, 0, queries.Ldapbeat.Queries[0].Timelimit)
 	assert.Equal(t, false, queries.Ldapbeat.Queries[0].Typesonly)
 	assert.Equal(t, []string{"dn", "cn", "objectClass"}, queries.Ldapbeat.Queries[0].Attributes)
+
+	assert.Equal(t, "ldap.forumsys.com", queries.Ldapbeat.Server)
+	assert.Equal(t, 389, queries.Ldapbeat.Port)
+	assert.Equal(t, "cn=read-only-admin,dc=example,dc=com", queries.Ldapbeat.Username)
+	assert.Equal(t, "password", queries.Ldapbeat.Password)
 }

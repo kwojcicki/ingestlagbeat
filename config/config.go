@@ -8,8 +8,12 @@ import (
 )
 
 type LdapBeatConfig struct {
-	Period  time.Duration `config:"period"`
-	Queries []LDAPQueries `config:"queries"`
+	Period   time.Duration `config:"period"`
+	Server   string        `config:"server"`
+	Port     int           `config:"port"`
+	Username string        `config:"username"`
+	Password string        `config:"password"`
+	Queries  []LDAPQueries `config:"queries"`
 }
 
 type LDAPQueries struct {
