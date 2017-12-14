@@ -35,7 +35,7 @@ func New(b *beat.Beat, cfg *common.Config) (beat.Beater, error) {
 }
 
 func (bt *Ldapbeat) query() {
-	conn, err := ldap.Dial("tcp", fmt.Sprintf("%s:%d", "ldap.forumsys.com", 389))
+	conn, err := ldap.Dial("tcp", fmt.Sprintf("%s:%d", bt.config.Server, bt.config.Port))
 	if err != nil {
 		logp.Warn("Couldn't connect to the ldap server: %s", err)
 		return
@@ -43,7 +43,7 @@ func (bt *Ldapbeat) query() {
 	logp.Info("Connected")
 
 	defer conn.Close()
-	err = conn.Bind("cn=read-only-admin,dc=example,dc=com", "password")
+	err = conn.Bind(bt.config.Username, bt.config.Password)
 	if err != nil {
 		logp.Warn("Couldn't bind to the ldap server: %s", err)
 		return
