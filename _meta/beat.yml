@@ -5,3 +5,20 @@
 ldapbeat:
   # Defines how often an event is sent to the output
   period: 1s
+  queries:
+  - filter: "(&(objectClass=*)(objectClass=groupOfUniqueNames))"
+    basedn: "dc=example,dc=com"
+    scope: 2
+    derefaliases: 0
+    sizelimit: 0
+    timelimit: 0
+    typesonly: false
+    attributes: ["dn", "cn", "objectClass"]
+  - filter: "(objectClass=*)"
+    basedn: "dc=example,dc=com"
+    scope: 2
+    derefaliases: 0
+    sizelimit: 0
+    timelimit: 0
+    typesonly: false
+    attributes: ["dn", "cn", "objectClass"]

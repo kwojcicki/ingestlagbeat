@@ -3,12 +3,30 @@
 
 package config
 
-import "time"
+import (
+	"time"
+)
 
-type Config struct {
-	Period time.Duration `config:"period"`
+type LdapBeatConfig struct {
+	Period  time.Duration `config:"period"`
+	Queries []LDAPQueries `config:"queries"`
 }
 
-var DefaultConfig = Config{
+type LDAPQueries struct {
+	Query        string   `config:"filter"`
+	BaseDN       string   `config:"basedn"`
+	Scope        int      `config:"scope"`
+	DeRefAliases int      `config:"derefaliases"`
+	Sizelimit    int      `config:"sizelimit"`
+	Timelimit    int      `config:"timelimit"`
+	Typesonly    bool     `config:"typesonly"`
+	Attributes   []string `config:"attributes"`
+}
+
+var DefaultConfig = LdapBeatConfig{
 	Period: 1 * time.Second,
+}
+
+type ConfigSettings struct {
+	Ldapbeat LdapBeatConfig
 }
