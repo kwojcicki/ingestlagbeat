@@ -4,21 +4,23 @@ import (
 	"fmt"
 	"time"
 
+	ldap "gopkg.in/ldap.v2"
+
 	"github.com/elastic/beats/libbeat/beat"
 	"github.com/elastic/beats/libbeat/common"
 	"github.com/elastic/beats/libbeat/logp"
 
-	"github.com/go-ldap/ldap"
 	"github.com/kwojcicki/ldapbeat/config"
 )
 
+// Ldapbeat - struct for beater
 type Ldapbeat struct {
 	done   chan struct{}
 	config config.Config
 	client beat.Client
 }
 
-// Creates beater
+// New - Creates Beater
 func New(b *beat.Beat, cfg *common.Config) (beat.Beater, error) {
 	config := config.DefaultConfig
 	if err := cfg.Unpack(&config); err != nil {
@@ -32,6 +34,40 @@ func New(b *beat.Beat, cfg *common.Config) (beat.Beater, error) {
 	return bt, nil
 }
 
+func (bt *Ldapbeat) query() {
+	conn, err := ldap.Dial("tcp", fmt.Sprintf("%s:%d", "ldap.forumsys.com", 389))
+	if err != nil {
+		logp.Warn("Couldn't connect to the ldap server: %s", err)
+		return
+	}
+	logp.Info("Connected")
+
+	defer conn.Close()
+	err = conn.Bind("cn=read-only-admin,dc=example,dc=com", "password")
+	if err != nil {
+		logp.Warn("Couldn't bind to the ldap server: %s", err)
+		return
+	}
+	searchRequest := ldap.NewSearchRequest(
+		"dc=example,dc=com",
+		ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false,
+		"(&(objectClass=*)(objectClass=groupOfUniqueNames))",
+		[]string{"dn", "cn", "objectClass"},
+		nil,
+	)
+	sr, err := conn.Search(searchRequest)
+	if err != nil {
+		logp.Warn("Couldn't query ldap server: %s", err)
+		return
+	}
+
+	logp.Info("%s", sr)
+	for _, result := range sr.Entries {
+		logp.Info("%s", result)
+	}
+}
+
+// Run - basic run loop for beat
 func (bt *Ldapbeat) Run(b *beat.Beat) error {
 	logp.Info("ldapbeat is running! Hit CTRL-C to stop it.")
 
@@ -49,31 +85,7 @@ func (bt *Ldapbeat) Run(b *beat.Beat) error {
 		case <-ticker.C:
 		}
 
-		conn, err := ldap.Dial("tcp", fmt.Sprintf("%s:%d", "ldap.forumsys.com", 389))
-		if err != nil {
-			continue
-		}
-		logp.Info("Connected")
-
-		defer conn.Close()
-		err = conn.Bind("cn=read-only-admin,dc=example,dc=com", "password")
-		if err != nil {
-			continue
-		}
-		searchRequest := ldap.NewSearchRequest(
-			"dc=example,dc=com",
-			ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false,
-			"(&(%s)(|(objectClass=group)(objectClass=groupofnames)))",
-			[]string{"dn", "cn"},
-			nil,
-		)
-		sr, err := conn.Search(searchRequest)
-		if err != nil {
-			continue
-		}
-
-		sr.PrettyPrint(0)
-
+		bt.query()
 		// event := beat.Event{
 		// 	Timestamp: time.Now(),
 		// 	Fields: common.MapStr{
@@ -87,6 +99,7 @@ func (bt *Ldapbeat) Run(b *beat.Beat) error {
 	}
 }
 
+// Stop - stops beat
 func (bt *Ldapbeat) Stop() {
 	bt.client.Close()
 	close(bt.done)
