@@ -13,10 +13,10 @@ type LdapBeatConfig struct {
 	Port     int           `config:"port"`
 	Username string        `config:"username"`
 	Password string        `config:"password"`
-	Queries  []LDAPQueries `config:"queries"`
+	Queries  []LDAPQuery   `config:"queries"`
 }
 
-type LDAPQueries struct {
+type LDAPQuery struct {
 	Query        string   `config:"filter"`
 	BaseDN       string   `config:"basedn"`
 	Scope        int      `config:"scope"`

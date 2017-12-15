@@ -34,39 +34,56 @@ func New(b *beat.Beat, cfg *common.Config) (beat.Beater, error) {
 	return bt, nil
 }
 
-func (bt *Ldapbeat) query() {
+func (bt *Ldapbeat) query(conn *ldap.Conn, query config.LDAPQuery) *ldap.SearchResult {
+	searchRequest := ldap.NewSearchRequest(
+		query.BaseDN,
+		query.Scope, query.DeRefAliases, query.Sizelimit, query.Timelimit, query.Typesonly,
+		query.Query,
+		query.Attributes,
+		nil,
+	)
+	sr, err := conn.Search(searchRequest)
+	if err != nil {
+		logp.Warn("Couldn't query ldap server: %s", err)
+		return nil
+	}
+	return sr
+}
+
+func (bt *Ldapbeat) connectToLDAP() (*ldap.Conn, error) {
 	conn, err := ldap.Dial("tcp", fmt.Sprintf("%s:%d", bt.config.Server, bt.config.Port))
 	if err != nil {
 		logp.Warn("Couldn't connect to the ldap server: %s", err)
-		return
+		return nil, err
 	}
 	logp.Info("Connected")
 
-	defer conn.Close()
 	err = conn.Bind(bt.config.Username, bt.config.Password)
 	if err != nil {
 		logp.Warn("Couldn't bind to the ldap server: %s", err)
-		return
+		return nil, err
 	}
+	return conn, nil
+}
 
-	for _, query := range bt.config.Queries {
-		searchRequest := ldap.NewSearchRequest(
-			query.BaseDN,
-			query.Scope, query.DeRefAliases, query.Sizelimit, query.Timelimit, query.Typesonly,
-			query.Query,
-			query.Attributes,
-			nil,
-		)
-		sr, err := conn.Search(searchRequest)
-		if err != nil {
-			logp.Warn("Couldn't query ldap server: %s", err)
-			return
+func (bt *Ldapbeat) publishEvent(result *ldap.SearchResult, query config.LDAPQuery) {
+	for _, entry := range result.Entries {
+		fields := common.MapStr{
+			"query": query.Query,
 		}
-
-		logp.Info("%s", sr)
-		for _, result := range sr.Entries {
-			logp.Info("%s", result)
+		for _, attribute := range query.Attributes {
+			if attribute == "dn" || attribute == "DN" {
+				fields["dn"] = entry.DN
+			} else {
+				fields[attribute] = entry.GetAttributeValue(attribute)
+			}
 		}
+		event := beat.Event{
+			Timestamp: time.Now(),
+			Fields:    fields,
+		}
+		bt.client.Publish(event)
+		logp.Info("Event sent")
 	}
 }
 
@@ -87,18 +104,17 @@ func (bt *Ldapbeat) Run(b *beat.Beat) error {
 			return nil
 		case <-ticker.C:
 		}
-
-		bt.query()
-		// event := beat.Event{
-		// 	Timestamp: time.Now(),
-		// 	Fields: common.MapStr{
-		// 		"type":    b.Info.Name,
-		// 		"counter": counter,
-		// 	},
-		// }
-		// bt.client.Publish(event)
-		// logp.Info("Event sent")
-		// counter++
+		func() {
+			for _, query := range bt.config.Queries {
+				conn, err := bt.connectToLDAP()
+				if err != nil {
+					continue
+				}
+				defer conn.Close()
+				result := bt.query(conn, query)
+				bt.publishEvent(result, query)
+			}
+		}()
 	}
 }
 
